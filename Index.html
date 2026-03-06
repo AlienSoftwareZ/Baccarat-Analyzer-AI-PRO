@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baccarat MM Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+--gold:#d4af37;
+--bg:#0c0c0f;
+--card:#16161c;
+--green:#00e676;
+--red:#ff5252;
+}
+
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:radial-gradient(circle at top,#1a1a22,#000);
+color:#fff;
+}
+
+.header{
+text-align:center;
+padding:18px;
+font-size:20px;
+font-weight:bold;
+background:linear-gradient(90deg,#8b0000,#4b0082);
+box-shadow:0 2px 15px rgba(0,0,0,.6);
+}
+
+.container{
+max-width:500px;
+margin:auto;
+padding:15px;
+}
+
+.card{
+background:var(--card);
+border-radius:14px;
+padding:18px;
+margin-bottom:15px;
+box-shadow:0 0 20px rgba(0,0,0,.6);
+}
+
+.pattern{
+display:flex;
+justify-content:center;
+gap:12px;
+margin:20px 0;
+flex-wrap:wrap;
+}
+
+.circle{
+width:60px;
+aspect-ratio:1/1;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+font-size:20px;
+color:#fff;
+cursor:pointer;
+transition:.2s;
+}
+
+.circle.selected{
+outline:4px solid var(--gold);
+}
+
+.circle.win{
+background:linear-gradient(145deg,#00e676,#00a152) !important;
+}
+
+.circle.lose{
+background:#555 !important;
+opacity:.6;
+}
+
+.B{
+background:radial-gradient(circle at 30% 30%, #ff6b6b, #b30000);
+}
+
+.P{
+background:radial-gradient(circle at 30% 30%, #42a5f5, #0d47a1);
+}
+
+button{
+padding:10px 16px;
+margin:5px;
+border:none;
+border-radius:8px;
+color:#fff;
+font-weight:bold;
+cursor:pointer;
+}
+
+.random{background:linear-gradient(145deg,#ff9800,#ff5722)}
+.correct{background:linear-gradient(145deg,#1e88e5,#1565c0)}
+.wrong{background:linear-gradient(145deg,#e53935,#b71c1c)}
+.reset{background:#444}
+
+.stats{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:15px;
+}
+
+.stat{
+background:#111;
+padding:12px;
+border-radius:10px;
+text-align:center;
+}
+
+.big{
+font-size:18px;
+font-weight:bold;
+}
+
+canvas{
+background:#0e0e0e;
+border-radius:12px;
+margin-top:15px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">BACCARAT MONEY MANAGEMENT PRO</div>
+
+<div class="container">
+
+<div class="card" style="text-align:center">
+
+<div>ครั้งที่ <span id="round">0</span></div>
+
+<div class="pattern" id="patternBox"></div>
+
+<button class="random" onclick="generatePattern()">สุ่มแพทเทิร์น</button><br>
+<button class="correct" onclick="resultBet(true)">ถูก</button>
+<button class="wrong" onclick="resultBet(false)">ผิด</button>
+<button class="reset" onclick="resetAll()">รีเซ็ต</button>
+
+<div style="margin-top:15px">
+ระบบเดินเงิน (Fixed)
+<div style="margin-top:5px;font-weight:bold;color:#d4af37">
+10 → 30 → 70 → 150
+</div>
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="stats">
+<div class="stat">กำไรสะสม<br><span id="profit" class="big">0</span></div>
+<div class="stat">DD สูงสุด<br><span id="maxDD" class="big">0</span></div>
+<div class="stat">แพ้ติด<br><span id="loseStreak" class="big">0</span></div>
+<div class="stat">Win Rate<br><span id="winrate" class="big">0%</span></div>
+</div>
+
+<canvas id="profitChart" height="140"></canvas>
+
+</div>
+
+</div>
+
+<script>
+
+let currentPattern=""
+let selectedIndex=null
+let resultStatus=[]
+
+let money=[10,30,70,150]
+let step=0
+let profit=0,peak=0,maxDD=0,loseStreak=0
+let historyProfit=[]
+let winCount=0,loseCount=0
+let round=0   // เริ่มที่ 0
+
+function generatePattern(){
+
+round++   // เพิ่มรอบเฉพาะตอนกดสุ่ม
+document.getElementById("round").innerText=round
+
+currentPattern=""
+selectedIndex=null
+resultStatus=[]
+
+for(let i=0;i<6;i++){
+let val=Math.random()<0.5?"B":"P"
+currentPattern+=val
+resultStatus.push(null)
+}
+
+renderPattern()
+}
+
+function renderPattern(){
+let box=document.getElementById("patternBox")
+box.innerHTML=""
+
+for(let i=0;i<currentPattern.length;i++){
+let val=currentPattern[i]
+let div=document.createElement("div")
+div.className="circle "+val
+
+if(resultStatus[i]==="win") div.classList.add("win")
+if(resultStatus[i]==="lose") div.classList.add("lose")
+if(i===selectedIndex) div.classList.add("selected")
+
+div.innerText=val
+
+div.onclick=function(){
+if(resultStatus[i]!==null) return
+selectedIndex=i
+renderPattern()
+}
+
+box.appendChild(div)
+}
+}
+
+function resultBet(win){
+
+if(selectedIndex===null){
+alert("กรุณาเลือกไม้ก่อน")
+return
+}
+
+let bet=money[Math.min(step,money.length-1)]
+
+if(win){
+profit+=bet
+step=0
+loseStreak=0
+winCount++
+resultStatus[selectedIndex]="win"
+}else{
+profit-=bet
+step++
+loseStreak++
+loseCount++
+resultStatus[selectedIndex]="lose"
+}
+
+selectedIndex=null
+
+if(profit>peak) peak=profit
+let dd=peak-profit
+if(dd>maxDD) maxDD=dd
+
+historyProfit.push(profit)
+
+updateUI()
+updateChart()
+renderPattern()
+}
+
+function updateUI(){
+document.getElementById("profit").innerText=profit
+document.getElementById("profit").style.color=profit>=0?"#00e676":"#ff5252"
+document.getElementById("maxDD").innerText=maxDD
+document.getElementById("loseStreak").innerText=loseStreak
+
+let total=winCount+loseCount
+let wr=total?((winCount/total)*100).toFixed(1):0
+document.getElementById("winrate").innerText=wr+"%"
+}
+
+function resetAll(){
+if(confirm("รีเซ็ตทั้งหมด?")){
+location.reload()
+}
+}
+
+let chart=new Chart(document.getElementById("profitChart"),{
+type:"line",
+data:{labels:[],datasets:[{data:[],borderColor:"#d4af37",tension:.35,fill:false}]},
+options:{responsive:true,plugins:{legend:{display:false}}}
+})
+
+function updateChart(){
+chart.data.labels=historyProfit.map((_,i)=>i+1)
+chart.data.datasets[0].data=historyProfit
+chart.update()
+}
+
+</script>
+</body>
+</html>
